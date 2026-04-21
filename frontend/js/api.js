@@ -18,7 +18,7 @@ export const logout = () => {
 };
 
 // ── Fetch helpers ──
-const BASE = '/api';
+const BASE = 'https://marketdatabank-backend.onrender.com';
 
 export async function apiFetch(endpoint, options = {}) {
   const token = getToken();
