@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dataset — Market Databank</title>
+  <meta name="description" content="View dataset details, preview data, visualize charts, and download from Market Databank." />
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="container">
+    <a href="/" class="navbar-brand"><div class="logo-icon">📊</div><span>Market Databank</span></a>
+    <div class="navbar-nav">
+      <a href="/" class="nav-link">← Back to Home</a>
+      <a href="/upload.html" id="nav-upload" class="nav-link" style="display:none">Upload</a>
+      <a href="/dashboard.html" id="nav-dash" class="nav-link" style="display:none">Dashboard</a>
+      <a href="/login.html" id="nav-login" class="nav-link">Login</a>
+    </div>
+    <div class="navbar-user">
+      <span id="nav-username"></span>
+      <button id="nav-logout" class="btn btn-secondary btn-sm" style="display:none">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<main class="page">
+  <div class="container" id="dataset-root">
+    <div class="loading-wrap"><div class="spinner"></div><p>Loading dataset…</p></div>
+  </div>
+</main>
+
+<!-- Dataset detail template (filled by JS) -->
+<template id="detail-template">
+<div>
+
+  <!-- Header -->
+  <div style="display:flex; flex-wrap:wrap; align-items:flex-start; gap:20px; margin-bottom:28px;">
+    <div style="flex:1; min-width:260px;">
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+        <span class="file-badge" id="dt-file-badge"></span>
+        <span id="dt-file-size" style="font-size:0.78rem; color:var(--text-muted);"></span>
+      </div>
+      <h1 id="dt-title" style="font-size:1.8rem; font-weight:800; letter-spacing:-0.5px; line-height:1.2; margin-bottom:12px;"></h1>
+      <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; font-size:0.83rem; color:var(--text-muted); margin-bottom:14px;">
+        <span>👤 <span id="dt-uploader" style="color:var(--text-secondary); font-weight:600;"></span></span>
+        <span>📅 <span id="dt-date"></span></span>
+        <span>⬇️ <span id="dt-downloads"></span> downloads</span>
+      </div>
+      <div id="dt-tags" class="tags-row" style="margin-bottom:16px;"></div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:10px; min-width:180px; align-items:flex-end;">
+      <button class="like-btn" id="like-btn">❤️ Like <span id="like-count"></span></button>
+      <a id="download-btn" class="btn btn-primary">⬇️ Download</a>
+      <button id="delete-btn" class="btn btn-danger btn-sm" style="display:none;">🗑️ Delete Dataset</button>
+    </div>
+  </div>
+
+  <!-- Description -->
+  <div class="card" style="margin-bottom:24px;">
+    <h2 class="card-title" style="margin-bottom:12px;">📝 Description</h2>
+    <p id="dt-desc" style="color:var(--text-secondary); line-height:1.8; white-space:pre-wrap;"></p>
+  </div>
+
+  <!-- Data Preview -->
+  <div class="card" style="margin-bottom:24px;">
+    <div class="card-header">
+      <h2 class="card-title">🔍 Data Preview</h2>
+      <span id="preview-total" style="font-size:0.8rem; color:var(--text-muted);"></span>
+    </div>
+    <div id="preview-container">
+      <div class="loading-wrap"><div class="spinner"></div><p>Loading preview…</p></div>
+    </div>
+  </div>
+
+  <!-- Visualization -->
+  <div class="card" style="margin-bottom:24px;">
+    <h2 class="card-title" style="margin-bottom:16px;">📊 Visualize</h2>
+    <div id="viz-setup">
+      <div style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:16px; align-items:flex-end;">
+        <div>
+          <p class="form-label" style="margin-bottom:6px;">Chart type</p>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-secondary btn-sm chart-type-btn active" data-type="bar" id="chart-bar-btn">📊 Bar</button>
+            <button class="btn btn-secondary btn-sm chart-type-btn" data-type="line" id="chart-line-btn">📈 Line</button>
+          </div>
+        </div>
+        <div style="flex:1; min-width:200px;">
+          <p class="form-label" style="margin-bottom:6px;">X-axis column</p>
+          <select class="form-control" id="x-col" style="max-width:260px;"></select>
+        </div>
+        <div style="flex:1; min-width:200px;">
+          <p class="form-label" style="margin-bottom:6px;">Y-axis columns (multi-select)</p>
+          <div class="col-selector" id="y-cols"></div>
+        </div>
+        <button class="btn btn-primary btn-sm" id="render-chart-btn">Render Chart</button>
+      </div>
+      <div id="chart-error" class="form-error" style="margin-bottom:10px;"></div>
+    </div>
+    <div style="position:relative; max-height:400px;">
+      <canvas id="viz-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- Comments -->
+  <div class="card">
+    <h2 class="card-title" style="margin-bottom:20px;">💬 Comments</h2>
+
+    <div id="comment-form-wrap" style="margin-bottom:24px; display:none;">
+      <div class="form-group">
+        <textarea class="form-control" id="comment-input" placeholder="Write a comment…" rows="3"></textarea>
+      </div>
+      <button class="btn btn-primary btn-sm" id="comment-submit">Post Comment</button>
+    </div>
+    <p id="comment-login-msg" style="color:var(--text-muted); font-size:0.875rem; margin-bottom:20px; display:none;">
+      <a href="/login.html" style="color:var(--accent); font-weight:600;">Login</a> to leave a comment.
+    </p>
+
+    <div id="comments-list">
+      <div class="loading-wrap" style="padding:24px 0;"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+</div>
+</template>
+
+<script type="module" src="/js/dataset.js"></script>
+</body>
+</html>

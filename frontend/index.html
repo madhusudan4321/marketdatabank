@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Market Databank — Explore Market Datasets</title>
+  <meta name="description" content="Market Databank is a platform to explore, upload, and download curated market datasets in CSV and JSON formats." />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="container">
+    <a href="/" class="navbar-brand">
+      <div class="logo-icon">📊</div>
+      <span>Market Databank</span>
+    </a>
+    <div class="navbar-search">
+      <input type="search" id="search-input" placeholder="🔍 Search datasets, tags..." autocomplete="off" />
+    </div>
+    <div class="navbar-nav">
+      <a href="/" class="nav-link active">Home</a>
+      <a href="/upload.html" id="nav-upload" class="nav-link" style="display:none">Upload</a>
+      <a href="/dashboard.html" id="nav-dash" class="nav-link" style="display:none">Dashboard</a>
+      <a href="/login.html" id="nav-login" class="nav-link">Login</a>
+      <a href="/login.html?mode=admin" id="nav-admin-login" class="btn btn-sm" style="background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;border:none;font-size:0.8rem;">🛡️ Admin</a>
+    </div>
+    <div class="navbar-user">
+      <span id="nav-username"></span>
+      <button id="nav-logout" class="btn btn-secondary btn-sm" style="display:none">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="container">
+    <h1 class="hero-title">The <span class="gradient">Market Data</span> Hub<br>for Everyone</h1>
+    <p class="hero-sub">Discover, upload, and share curated market datasets. Visualize trends, collaborate, and make data-driven decisions.</p>
+    <a href="/upload.html" id="hero-upload-btn" class="btn btn-primary btn-lg" style="display:none">📤 Upload Dataset</a>
+    <a href="/login.html" id="hero-login-btn" class="btn btn-primary btn-lg">🚀 Get Started</a>
+  </div>
+</section>
+
+<!-- Main content -->
+<main class="page">
+  <div class="container">
+
+
+
+    <!-- Filter tags row -->
+    <div id="tag-filters" style="display:flex; flex-wrap:wrap; gap:8px; margin: 16px 0;"></div>
+
+    <!-- Datasets grid -->
+    <div id="datasets-container">
+      <div class="loading-wrap"><div class="spinner"></div><p>Loading datasets…</p></div>
+    </div>
+
+  </div>
+</main>
+
+<script type="module" src="/js/home.js"></script>
+</body>
+</html>
