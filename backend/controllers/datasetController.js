@@ -1,7 +1,9 @@
 const path = require('path');
 const fs = require('fs');
+const axios = require('axios');
 const { parse } = require('csv-parse/sync');
 const Dataset = require('../models/Dataset');
+const { cloudinary } = require('../config/cloudinary');
 
 // GET /api/datasets — list ONLY approved datasets (public)
 const getDatasets = async (req, res) => {
@@ -98,6 +100,9 @@ const getDataset = async (req, res) => {
 };
 
 // POST /api/datasets — upload new dataset
+// req.file from multer-storage-cloudinary contains:
+//   req.file.path      → the Cloudinary secure URL
+//   req.file.filename  → the Cloudinary public_id
 const uploadDataset = async (req, res) => {
   try {
     if (!req.file) {
@@ -107,7 +112,8 @@ const uploadDataset = async (req, res) => {
     const { title, description, tags } = req.body;
 
     if (!title || !description) {
-      fs.unlinkSync(req.file.path);
+      // Clean up Cloudinary upload if validation fails
+      try { await cloudinary.uploader.destroy(req.file.filename, { resource_type: 'raw' }); } catch (_) {}
       return res.status(400).json({ message: 'Title and description are required.' });
     }
 
@@ -123,7 +129,8 @@ const uploadDataset = async (req, res) => {
       title,
       description,
       tags: tagsArray,
-      fileUrl: req.file.filename,
+      fileUrl: req.file.path,          // Cloudinary secure URL
+      publicId: req.file.filename,     // Cloudinary public_id (for deletion)
       fileType: ext,
       fileSize: req.file.size,
       uploadedBy: req.user._id,
@@ -137,8 +144,9 @@ const uploadDataset = async (req, res) => {
 
     res.status(201).json({ message: statusMsg, dataset: populated, status });
   } catch (err) {
-    if (req.file) {
-      try { fs.unlinkSync(req.file.path); } catch (_) {}
+    // Try to clean up orphaned Cloudinary file
+    if (req.file?.filename) {
+      try { await cloudinary.uploader.destroy(req.file.filename, { resource_type: 'raw' }); } catch (_) {}
     }
     if (err.name === 'ValidationError') {
       const messages = Object.values(err.errors).map((e) => e.message);
@@ -163,9 +171,13 @@ const deleteDataset = async (req, res) => {
       return res.status(403).json({ message: 'You do not have permission to delete this dataset.' });
     }
 
-    const filePath = path.join(__dirname, '..', 'uploads', dataset.fileUrl);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    // Delete from Cloudinary (raw resource type for csv/json)
+    if (dataset.publicId) {
+      try {
+        await cloudinary.uploader.destroy(dataset.publicId, { resource_type: 'raw' });
+      } catch (cloudErr) {
+        console.warn('Cloudinary delete warning:', cloudErr.message);
+      }
     }
 
     await dataset.deleteOne();
@@ -175,7 +187,7 @@ const deleteDataset = async (req, res) => {
   }
 };
 
-// GET /api/datasets/:id/download — stream file + increment count
+// GET /api/datasets/:id/download — proxy Cloudinary file + increment count
 const downloadDataset = async (req, res) => {
   try {
     const dataset = await Dataset.findById(req.params.id);
@@ -185,39 +197,41 @@ const downloadDataset = async (req, res) => {
     if (dataset.status !== 'approved') {
       return res.status(403).json({ message: 'This dataset has not been approved yet.' });
     }
-
-    const filePath = path.join(__dirname, '..', 'uploads', dataset.fileUrl);
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: 'File not found on server.' });
+    if (!dataset.fileUrl) {
+      return res.status(404).json({ message: 'File not found.' });
     }
 
     await Dataset.findByIdAndUpdate(req.params.id, { $inc: { downloadCount: 1 } });
 
     const ext = dataset.fileType === 'json' ? 'json' : 'csv';
     const mimeType = ext === 'json' ? 'application/json' : 'text/csv';
+
+    // Proxy the file from Cloudinary so the browser gets a proper download
+    const response = await axios.get(dataset.fileUrl, { responseType: 'stream' });
+
     res.setHeader('Content-Disposition', `attachment; filename="${dataset.title}.${ext}"`);
     res.setHeader('Content-Type', mimeType);
-
-    fs.createReadStream(filePath).pipe(res);
+    response.data.pipe(res);
   } catch (err) {
+    console.error('Download error:', err.message);
     res.status(500).json({ message: 'Failed to download dataset.' });
   }
 };
 
-// GET /api/datasets/:id/preview — first 10 rows
+// GET /api/datasets/:id/preview — first 10 rows (fetched from Cloudinary URL)
 const previewDataset = async (req, res) => {
   try {
     const dataset = await Dataset.findById(req.params.id);
     if (!dataset) {
       return res.status(404).json({ message: 'Dataset not found.' });
     }
-
-    const filePath = path.join(__dirname, '..', 'uploads', dataset.fileUrl);
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: 'File not found on server.' });
+    if (!dataset.fileUrl) {
+      return res.status(404).json({ message: 'File not found.' });
     }
 
-    const raw = fs.readFileSync(filePath, 'utf8');
+    // Fetch file content from Cloudinary URL
+    const response = await axios.get(dataset.fileUrl, { responseType: 'text' });
+    const raw = response.data;
 
     if (dataset.fileType === 'json') {
       let parsed = JSON.parse(raw);

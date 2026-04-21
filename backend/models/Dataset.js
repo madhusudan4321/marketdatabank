@@ -22,6 +22,10 @@ const datasetSchema = new mongoose.Schema(
       type: String,
       required: [true, 'File URL is required'],
     },
+    publicId: {
+      type: String,
+      default: '',
+    },
     fileType: {
       type: String,
       enum: ['csv', 'json'],

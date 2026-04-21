@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const auth = require('../middleware/auth');
 const adminOnly = require('../middleware/adminOnly');
+const { storage: cloudinaryStorage } = require('../config/cloudinary');
 const {
   getDatasets,
   getPendingDatasets,
@@ -17,16 +18,7 @@ const {
   toggleLike,
 } = require('../controllers/datasetController');
 
-// Multer storage config
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, path.join(__dirname, '..', 'uploads')),
-  filename: (req, file, cb) => {
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const ext = path.extname(file.originalname);
-    cb(null, `${unique}${ext}`);
-  },
-});
-
+// File type filter — only csv/json
 const fileFilter = (req, file, cb) => {
   const allowed = ['.csv', '.json'];
   const ext = path.extname(file.originalname).toLowerCase();
@@ -37,8 +29,9 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+// Multer configured with Cloudinary storage
 const upload = multer({
-  storage,
+  storage: cloudinaryStorage,
   fileFilter,
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
 });
@@ -61,7 +54,7 @@ router.post('/', auth, upload.single('file'), uploadDataset);
 router.delete('/:id', auth, deleteDataset);
 router.post('/:id/like', auth, toggleLike);
 
-// Multer error handling
+// Multer / Cloudinary error handling
 router.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
