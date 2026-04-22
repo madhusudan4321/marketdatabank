@@ -14,7 +14,15 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    'https://marketdatabank-frontend.onrender.com',
+    'http://localhost:5500',
+    'http://127.0.0.1:5500',
+    'http://localhost:3000',
+  ],
+  exposedHeaders: ['Content-Disposition'],
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

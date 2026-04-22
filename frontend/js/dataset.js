@@ -74,14 +74,13 @@ function renderDetail(d) {
     document.getElementById('like-btn').classList.add('liked');
   }
 
-  // Download
+  // Download — must be done via JS fetch + Blob because:
+  // 1. The frontend & backend are on different subdomains (cross-origin).
+  // 2. Browsers silently ignore the `download` attribute on cross-origin <a> tags.
   const dlBtn = document.getElementById('download-btn');
-  dlBtn.href = `/api/datasets/${d._id}/download`;
-  dlBtn.setAttribute('download', '');
-  dlBtn.addEventListener('click', () => {
-    const el = document.getElementById('dt-downloads');
-    el.textContent = parseInt(el.textContent) + 1;
-  });
+  dlBtn.removeAttribute('href');
+  dlBtn.style.cursor = 'pointer';
+  dlBtn.addEventListener('click', () => downloadFile(d));
 }
 
 function renderPreview(preview) {
@@ -304,6 +303,45 @@ function escHtml(str) {
   const d = document.createElement('div');
   d.textContent = str || '';
   return d.innerHTML;
+}
+
+// ── Download via Blob (works cross-origin) ──
+async function downloadFile(dataset) {
+  const dlBtn = document.getElementById('download-btn');
+  dlBtn.textContent = '⏳ Downloading…';
+  dlBtn.style.pointerEvents = 'none';
+
+  try {
+    const BACKEND = 'https://marketdatabank-backend.onrender.com/api';
+    const response = await fetch(`${BACKEND}/datasets/${dataset._id}/download`);
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.message || `Download failed (${response.status})`);
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const ext = (dataset.fileType || 'csv').toLowerCase();
+    a.download = `${dataset.title}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Update download count in UI
+    const el = document.getElementById('dt-downloads');
+    if (el) el.textContent = parseInt(el.textContent || '0') + 1;
+
+    showToast('Download started! ✅', 'success');
+  } catch (err) {
+    showToast(`Download failed: ${err.message}`, 'error');
+  } finally {
+    dlBtn.innerHTML = '⬇️ Download';
+    dlBtn.style.pointerEvents = '';
+  }
 }
 
 init();
