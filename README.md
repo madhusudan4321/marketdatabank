@@ -3,6 +3,8 @@
 A full-stack web platform for uploading, storing, and exploring market datasets (CSV/JSON) with interactive previews and filtering capabilities.
 
 ---
+#LiveDemo
+[![Live Demo](https://img.shields.io/badge/Live-Demo-green)](https://marketdatabank-frontend.onrender.com/)
 
 ## 🚀 Features
 
